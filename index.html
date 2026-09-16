@@ -1,1039 +1,1092 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>러닝 기록 시스템</title>
-  <script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { 
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
-    body { 
-      font-family: 'Noto Sans KR', sans-serif; 
-      background: #f5f5f5; 
-      padding: 0;
-      -webkit-user-select: none;
-      user-select: none;
-      -webkit-touch-callout: none;
-    }
-    .container { 
-      max-width: 100%;
-      max-height: 100vh;
-      margin: 0 auto; 
-      background: white; 
-      padding: 15px;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    h1 { 
-      color: #4285F4; 
-      text-align: center; 
-      margin-bottom: 12px; 
-      font-size: 24px;
-    }
-    .session-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .session-info {
-      background: #f0f7ff;
-      border: 2px solid #4285F4;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 11px;
-      color: #4285F4;
-    }
-    .session-info strong {
-      font-size: 12px;
-    }
-    .mode-badge {
-      background: #e8f5e9;
-      border: 2px solid #4caf50;
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-size: 11px;
-      color: #2e7d32;
-      font-weight: bold;
-    }
-    .mode-badge.max-distance {
-      background: #fff3e0;
-      border-color: #ff9800;
-      color: #e65100;
-    }
-    .network-status {
-      font-size: 10px;
-      padding: 4px 8px;
-      border-radius: 5px;
-      display: inline-block;
-    }
-    .network-status.online {
-      background: #d4edda;
-      color: #155724;
-    }
-    .network-status.offline {
-      background: #f8d7da;
-      color: #721c24;
-    }
-    button.new-session-header {
-      background: #ff9800;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      font-size: 11px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background 0.3s;
-      white-space: nowrap;
-    }
-    button.new-session-header:hover {
-      background: #e68900;
-    }
-    .camera-section {
-      position: relative;
-      margin-bottom: 15px;
-      background: #000;
-      border: 2px solid #4285F4;
-      border-radius: 8px;
-      overflow: hidden;
-      aspect-ratio: 4/3;
-      width: 100%;
-    }
-    #video { 
-      width: 100%;
-      height: 100%;
-      display: none;
-      background: #000;
-      object-fit: cover;
-      -webkit-transform: translate3d(0, 0, 0);
-    }
-    #canvas { display: none; }
-    .camera-controls {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-      align-items: center;
-    }
-    select {
-      flex: 1;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      font-size: 13px;
-      background: white;
-      color: #333;
-    }
-    button { 
-      background: #4285F4; 
-      color: white;
-      border: none; 
-      padding: 8px 16px; 
-      font-size: 13px; 
-      border-radius: 5px; 
-      cursor: pointer; 
-      transition: background 0.3s;
-      flex: 1;
-      -webkit-user-select: none;
-      user-select: none;
-    }
-    button:hover { background: #357ae8; }
-    button:active { background: #2e5cc8; }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    .button-group {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 15px;
-    }
-    .message { 
-      padding: 12px; 
-      margin: 8px 0; 
-      border-radius: 5px; 
-      display: none;
-      font-weight: bold;
-      font-size: 14px;
-      text-align: center;
-      animation: slideIn 0.2s ease-out;
-      position: fixed;
-      top: 20px;
-      left: 15px;
-      right: 15px;
-      z-index: 999;
-      max-width: calc(100% - 30px);
-      word-wrap: break-word;
-      word-break: break-word;
-    }
-    @keyframes slideIn {
-      from { transform: translateY(-20px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    .message.show { display: block; }
-    .success { 
-      background: #d4edda; 
-      border: 2px solid #28a745; 
-      color: #155724;
-    }
-    .error { 
-      background: #f8d7da; 
-      border: 2px solid #f5c6cb; 
-      color: #721c24;
-    }
-    .info { 
-      background: #d1ecf1; 
-      border: 2px solid #bee5eb; 
-      color: #0c5460;
-    }
-    .stats { 
-      background: #f0f7ff;
-      border: 2px solid #4285F4;
-      padding: 12px; 
-      border-radius: 8px; 
-      margin: 12px 0; 
-      text-align: center; 
-    }
-    .stats h3 {
-      color: #4285F4;
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-    .stats p { 
-      margin: 6px 0; 
-      font-size: 13px; 
-    }
-    .stats strong { 
-      color: #34A853; 
-    }
-    .section {
-      background: #f9f9f9;
-      border: 0.5px solid #e0e0e0;
-      padding: 12px;
-      border-radius: 8px;
-      margin: 10px 0;
-    }
-    .section h3 {
-      color: #4285F4;
-      margin-bottom: 8px;
-      font-size: 14px;
-      font-weight: bold;
-    }
-    .offline-data-count {
-      background: #fff3e0;
-      border: 1px solid #ff9800;
-      padding: 10px;
-      border-radius: 5px;
-      margin-bottom: 10px;
-      font-size: 13px;
-      color: #e65100;
-    }
-    .offline-data-count strong {
-      font-size: 16px;
-      color: #ff9800;
-    }
-    button.upload {
-      background: #4caf50;
-      width: 100%;
-      margin-bottom: 8px;
-      font-weight: bold;
-    }
-    button.upload:hover {
-      background: #388e3c;
-    }
-    button.delete {
-      background: #f44336;
-      width: 100%;
-      font-weight: bold;
-    }
-    button.delete:hover {
-      background: #da190b;
-    }
-    button.batch-end {
-      background: #f44336;
-      width: 100%;
-      margin-top: 8px;
-      font-weight: bold;
-      font-size: 14px;
-    }
-    button.batch-end:hover {
-      background: #da190b;
-    }
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 2000;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .modal.show {
-      display: flex;
-    }
-    .modal-content {
-      background: white;
-      border-radius: 15px;
-      padding: 25px;
-      max-width: 500px;
-      width: 100%;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-      animation: slideUp 0.3s ease-out;
-      max-height: 90vh;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    @keyframes slideUp {
-      from { transform: translateY(30px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    .modal-header {
-      text-align: center;
-      margin-bottom: 20px;
-      border-bottom: 3px solid #4285F4;
-      padding-bottom: 12px;
-    }
-    .modal-header h2 {
-      color: #4285F4;
-      font-size: 20px;
-      margin-bottom: 4px;
-    }
-    .mode-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 15px;
-    }
-    .mode-btn {
-      padding: 15px;
-      border: 2px solid #ddd;
-      border-radius: 10px;
-      background: white;
-      cursor: pointer;
-      transition: all 0.3s;
-      text-align: center;
-      font-size: 12px;
-    }
-    .mode-btn:active {
-      border-color: #4285F4;
-      background: #f0f7ff;
-    }
-    .mode-btn.selected {
-      border-color: #4285F4;
-      background: #f0f7ff;
-    }
-    .mode-btn .emoji {
-      font-size: 28px;
-      margin-bottom: 8px;
-    }
-    .input-group {
-      margin: 12px 0;
-    }
-    .input-group label {
-      display: block;
-      margin-bottom: 6px;
-      color: #333;
-      font-weight: bold;
-      font-size: 13px;
-    }
-    .input-group input {
-      width: 100%;
-      padding: 10px;
-      border: 2px solid #ddd;
-      border-radius: 5px;
-      font-size: 14px;
-    }
-    .input-group input:focus {
-      outline: none;
-      border-color: #4285F4;
-    }
-    .modal-buttons {
-      display: flex;
-      gap: 8px;
-      margin-top: 20px;
-    }
-    .modal-buttons button {
-      flex: 1;
-      padding: 10px;
-    }
-    .modal-buttons button.cancel {
-      background: #999;
-    }
-    .modal-buttons button.cancel:hover {
-      background: #777;
-    }
-    .pace-end-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 2000;
-      align-items: center;
-      justify-content: center;
-    }
-    .pace-end-modal.show {
-      display: flex;
-    }
-    .end-modal-content {
-      background: white;
-      border-radius: 15px;
-      padding: 25px;
-      max-width: 500px;
-      width: 90%;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-      text-align: center;
-    }
-    .end-icon {
-      font-size: 40px;
-      margin-bottom: 12px;
-    }
-    .end-title {
-      font-size: 20px;
-      color: #4285F4;
-      margin-bottom: 12px;
-      font-weight: bold;
-    }
-    .end-time {
-      font-size: 14px;
-      color: #666;
-      margin: 12px 0;
-    }
-    .end-time strong {
-      font-size: 20px;
-      color: #34A853;
-      display: block;
-      margin-top: 8px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1D3557">
+<title>달리기 Lap Checker</title>
+<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --ink: #1D2733;
+    --court: #1D3557;
+    --lane: #2F6FD0;
+    --floor: #EDF1F5;
+    --paper: #FFFFFF;
+    --line: #F4C21B;
+    --go: #1F9D5B;
+    --stop: #CF3F3B;
+    --muted: #66768A;
+    --rule: #D5DDE6;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    background: var(--floor);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; border: none; border-radius: 10px; padding: 10px 16px; font-weight: 700; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  :focus-visible { outline: 3px solid var(--line); outline-offset: 2px; }
+
+  /* 상단 */
+  header {
+    background: var(--court);
+    color: #fff;
+    padding: 12px 16px 0;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .head-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  header h1 { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
+  header h1 small { font-weight: 500; opacity: .7; font-size: 13px; margin-left: 6px; }
+  .court-line { height: 4px; background: var(--line); margin: 10px -16px 0; }
+  nav { display: flex; gap: 4px; margin-top: 8px; }
+  nav button {
+    background: transparent; color: #fff; opacity: .65; border-radius: 8px 8px 0 0;
+    padding: 8px 14px; font-weight: 600;
+  }
+  nav button[aria-selected="true"] { background: var(--floor); color: var(--court); opacity: 1; }
+  #netBadge { font-size: 12px; opacity: .8; }
+
+  main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+  .view[hidden] { display: none !important; }
+
+  /* 측정 화면 */
+  .measure { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+  @media (max-width: 760px) { .measure { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--paper); border-radius: 14px; padding: 16px; }
+  .panel h2 { font-size: 15px; font-weight: 800; margin-bottom: 10px; color: var(--court); }
+
+  .clock-wrap { text-align: center; padding: 6px 0 12px; }
+  #clock { font-size: 64px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+  #clockSub { color: var(--muted); font-size: 13px; margin-top: 6px; min-height: 20px; }
+  .capbar { height: 8px; background: var(--rule); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  .capbar > div { height: 100%; width: 0; background: var(--lane); transition: width .3s linear; }
+
+  .cam {
+    position: relative; background: #0d141c; border-radius: 12px; overflow: hidden;
+    aspect-ratio: 4 / 3;
+  }
+  .cam video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cam .hint {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #9fb0c3; font-size: 14px; text-align: center; padding: 20px;
+  }
+  .cam .frame {
+    position: absolute; inset: 18% 22%; border: 3px solid var(--line); border-radius: 12px;
+    pointer-events: none; display: none;
+  }
+  .cam.on .frame { display: block; }
+  .cam.on .hint { display: none; }
+
+  .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .row > * { flex: 1; }
+  .btn-go { background: var(--go); color: #fff; font-size: 18px; padding: 14px; }
+  .btn-stop { background: var(--stop); color: #fff; font-size: 18px; padding: 14px; }
+  .btn-plain { background: var(--floor); color: var(--court); }
+  .btn-lane { background: var(--lane); color: #fff; }
+
+  #facing { padding: 9px 11px; border: 2px solid var(--rule); border-radius: 10px; background: #fff; }
+  .manual { display: flex; gap: 8px; margin-top: 10px; }
+  .manual input { flex: 1; min-width: 0; padding: 10px 12px; border: 2px solid var(--rule); border-radius: 10px; }
+
+  /* 설정 */
+  .field { margin-bottom: 12px; }
+  .field > label, .field > .lbl { display: block; font-weight: 700; font-size: 13px; margin-bottom: 5px; }
+  .field input[type="text"], .field input[type="number"], .field select {
+    width: 100%; padding: 9px 11px; border: 2px solid var(--rule); border-radius: 10px; background: #fff;
+  }
+  .seg { display: flex; border: 2px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  .seg label { flex: 1; text-align: center; padding: 8px 4px; cursor: pointer; font-weight: 600; font-size: 14px; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label.on { background: var(--court); color: #fff; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .guide { counter-reset: g; list-style: none; margin-top: 4px; }
+  .guide li { counter-increment: g; position: relative; padding-left: 28px; margin: 6px 0; font-size: 14px; }
+  .guide li::before {
+    content: counter(g); position: absolute; left: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--line); color: var(--court); font-weight: 800; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* 주자 보드 */
+  .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .tile {
+    border: 2px solid var(--rule); border-radius: 12px; padding: 8px 10px; background: #fff;
+    position: relative;
+  }
+  .tile .who { font-size: 13px; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .cnt { font-size: 34px; font-weight: 800; line-height: 1.1; color: var(--court); }
+  .tile .cnt span { font-size: 14px; font-weight: 600; margin-left: 2px; color: var(--muted); }
+  .tile .split { font-size: 12px; color: var(--muted); }
+  .tile.fresh { border-color: var(--line); background: #FFF9E3; }
+  .tile.done { border-color: var(--go); }
+  .tile.done::after {
+    content: "완주"; position: absolute; top: 8px; right: 8px; font-size: 11px; font-weight: 800;
+    color: #fff; background: var(--go); padding: 1px 6px; border-radius: 6px;
+  }
+  .empty { color: var(--muted); font-size: 14px; padding: 18px 4px; text-align: center; }
+
+  /* 스캔 플래시 */
+  #flash {
+    position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center;
+    flex-direction: column; background: var(--line); color: var(--court); text-align: center; padding: 20px;
+  }
+  #flash.show { display: flex; animation: pop .18s ease-out; }
+  #flash.finish { background: var(--go); color: #fff; }
+  #flash.warn { background: var(--stop); color: #fff; }
+  #flash .f-who { font-size: clamp(28px, 7vw, 56px); font-weight: 800; }
+  #flash .f-big { font-size: clamp(80px, 24vw, 200px); font-weight: 900; line-height: 1; letter-spacing: -0.04em; }
+  #flash .f-sub { font-size: clamp(18px, 4vw, 30px); font-weight: 700; margin-top: 8px; }
+  #flash .f-pace { font-size: clamp(20px, 4.6vw, 36px); font-weight: 800; margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+  #flash .f-pace:empty { display: none; }
+  .pill { display: inline-block; border-radius: 999px; padding: 2px 14px; color: #fff; }
+  .pill.ahead { background: var(--go); }
+  .pill.behind { background: var(--stop); }
+  .tile .pace { font-size: 12px; font-weight: 700; }
+  .tile .pace.ahead { color: var(--go); }
+  .tile .pace.behind { color: var(--stop); }
+  .time-in { display: flex; align-items: center; gap: 6px; }
+  .field .time-in input[type="number"] { width: 84px; }
+  @keyframes pop { from { transform: scale(1.04); opacity: .6; } to { transform: scale(1); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { #flash.show { animation: none; } }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60;
+    background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; font-weight: 600;
+    display: none; max-width: calc(100% - 32px); text-align: center;
+  }
+  #toast.show { display: block; }
+
+  /* 기록 */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 6px; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-size: 12.5px; color: var(--muted); font-weight: 700; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover td { background: #F6F8FB; }
+  .up { color: var(--go); font-weight: 700; }
+  .down { color: var(--stop); font-weight: 700; }
+  .splits td { text-align: left; white-space: normal; background: #F6F8FB; font-size: 13px; color: var(--muted); }
+  .table-scroll { overflow-x: auto; }
+  .sess-meta { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+
+  /* QR 카드 */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
+  .card {
+    border: 2px dashed var(--rule); border-radius: 12px; padding: 10px; text-align: center; background: #fff;
+    break-inside: avoid;
+  }
+  .card .qr { display: flex; justify-content: center; }
+  .card .qr img, .card .qr canvas { width: 120px; height: 120px; }
+  .card .cap { font-weight: 800; font-size: 16px; margin-top: 6px; color: var(--court); }
+  .card .code { font-size: 11px; color: var(--muted); }
+
+  @media print {
+    header, #viewMeasure, #viewRecords, .no-print, #toast, #flash { display: none !important; }
+    body { background: #fff; }
+    main { padding: 0; max-width: none; }
+    #viewCards { display: block !important; }
+    .panel { padding: 0; }
+    .cards { grid-template-columns: repeat(4, 1fr); gap: 6mm; }
+    .card { border: 1px dashed #999; }
+  }
+</style>
 </head>
 <body>
 
-<div class="container">
-  <h1>🏃 러닝 기록</h1>
-  
-  <div class="session-header">
-    <div class="session-info">
-      <strong>세션: <span id="sessionDisplay">준비중</span></strong>
-    </div>
-    <div class="mode-badge" id="modeBadge">준비중</div>
-    <div class="network-status online" id="networkStatus">🟢 온라인</div>
-    <button class="new-session-header" onclick="startNewSession()">🔄 새 시작</button>
+<header>
+  <div class="head-row">
+    <h1>달리기 Lap Checker <small>P-JOURNEY</small></h1>
+    <span id="netBadge"></span>
   </div>
-  
-  <div class="camera-section">
-    <video id="video" autoplay muted playsinline></video>
-    <canvas id="canvas"></canvas>
-  </div>
-  
-  <div class="camera-controls">
-    <select id="cameraSelect">
-      <option value="environment">후면 카메라</option>
-      <option value="user">전면 카메라</option>
-    </select>
-  </div>
-  
-  <div class="button-group">
-    <button id="startBtn" onclick="startCamera()">시작</button>
-    <button id="stopBtn" onclick="stopCamera()" disabled>중지</button>
-  </div>
-  
-  <div id="message" class="message"></div>
-  
-  <div id="stats" class="stats" style="display:none;">
-    <h3>통계</h3>
-    <p>스캔: <strong id="scanCount">0</strong>회</p>
-    <p id="lastStudent" style="display:none;">학생: <strong id="lastName">-</strong></p>
-    <p id="distanceInfo" style="display:none;">거리: <strong id="lastDistance">-</strong>km</p>
-  </div>
+  <nav role="tablist">
+    <button role="tab" aria-selected="true" data-view="viewMeasure">측정</button>
+    <button role="tab" aria-selected="false" data-view="viewRecords">기록</button>
+    <button role="tab" aria-selected="false" data-view="viewCards">QR 카드</button>
+  </nav>
+</header>
 
-  <div class="section">
-    <h3>오프라인 데이터 관리</h3>
-    <div class="offline-data-count">저장됨: <strong id="offlineCount">0</strong>개</div>
-    <button class="upload" onclick="uploadData()">📤 데이터 업로드</button>
-    <button class="delete" onclick="clearData()">🗑️ 로컬 데이터 전부 삭제</button>
-  </div>
-
-  <div class="section">
-    <button class="batch-end" id="batchEndBtn" onclick="batchEndSession()" style="display:none;">🛑 일괄 종료</button>
-  </div>
-</div>
-
-<!-- 모드 선택 모달 -->
-<div id="modeModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2>운동 모드</h2>
-      <p style="font-size: 12px;">모드를 선택하세요</p>
-    </div>
-    
-    <div class="mode-buttons">
-      <div class="mode-btn" id="maxDistanceBtn" onclick="selectMode('maxDistance')">
-        <div class="emoji">📏</div>
-        <strong>최대거리</strong>
-        <p style="font-size: 11px; color: #666; margin-top: 8px;">목표 거리<br>자동 종료</p>
+<main>
+  <!-- 측정 -->
+  <section id="viewMeasure" class="view">
+    <div class="measure">
+      <div>
+        <div class="panel">
+          <div class="clock-wrap">
+            <div id="clock" class="num">00:00</div>
+            <div id="clockSub">설정을 확인하고 출발을 누르세요</div>
+            <div class="capbar" id="capbar" hidden><div></div></div>
+          </div>
+          <div class="cam" id="cam">
+            <video id="video" autoplay muted playsinline></video>
+            <div class="frame"></div>
+            <div class="hint">카메라를 켜면 이곳에 QR 카드를 비춥니다</div>
+          </div>
+          <div class="row">
+            <button class="btn-plain" id="camBtn">카메라 켜기</button>
+            <select id="facing" aria-label="카메라 방향">
+              <option value="environment">후면 카메라</option>
+              <option value="user">전면 카메라</option>
+            </select>
+          </div>
+          <div class="row">
+            <button class="btn-go" id="startBtn">출발</button>
+            <button class="btn-stop" id="endBtn" hidden>측정 종료</button>
+          </div>
+          <div class="manual">
+            <input id="manualInput" type="text" inputmode="text" placeholder="QR이 안 읽힐 때: 3-15 처럼 입력" autocomplete="off">
+            <button class="btn-lane" id="manualBtn">왕복 기록</button>
+          </div>
+        </div>
       </div>
-      <div class="mode-btn" id="freeBtn" onclick="selectMode('free')">
-        <div class="emoji">🆓</div>
-        <strong>자율</strong>
-        <p style="font-size: 11px; color: #666; margin-top: 8px;">거리 제한<br>없음</p>
+
+      <div>
+        <div class="panel" id="setupPanel">
+          <h2>측정 설정</h2>
+          <div class="field">
+            <label for="label">측정 이름</label>
+            <input type="text" id="label" placeholder="예: 3차시 사전 측정">
+          </div>
+          <div class="field">
+            <span class="lbl">종료 방식</span>
+            <div class="seg" role="radiogroup">
+              <label><input type="radio" name="mode" value="free" checked>직접 종료</label>
+              <label><input type="radio" name="mode" value="target">목표 횟수</label>
+              <label><input type="radio" name="mode" value="timecap">제한 시간</label>
+            </div>
+          </div>
+          <div class="field" id="targetField" hidden>
+            <label for="target">목표 횟수</label>
+            <input type="number" id="target" min="2" step="2" value="40">
+            <p class="note">아래 '스캔 1번 = 몇 회' 설정대로 셉니다. 목표에 도달한 학생은 자동으로 완주 처리되고 완주 시간이 기록됩니다.</p>
+            <label for="goalMin" style="margin-top:12px">목표 시간 (선택)</label>
+            <div class="time-in">
+              <input type="number" id="goalMin" min="0" max="30" step="1" placeholder="0"> 분
+              <input type="number" id="goalS" min="0" max="59" step="1" placeholder="0"> 초
+            </div>
+            <p class="note">입력하면 스캔할 때마다 목표보다 앞섰는지 늦었는지, 남은 횟수를 한 번에 몇 초 안에 달려야 하는지 보여줍니다.</p>
+          </div>
+          <div class="field" id="capField" hidden>
+            <label for="capMin">제한 시간 (분)</label>
+            <input type="number" id="capMin" min="1" max="30" step="1" value="8">
+            <p class="note">시간이 끝나면 측정이 자동 종료되고, 그때까지의 횟수가 기록됩니다.</p>
+            <label for="capGoal" style="margin-top:12px">목표 횟수 (선택)</label>
+            <input type="number" id="capGoal" min="2" step="2" placeholder="예: 60">
+            <p class="note">입력하면 스캔할 때마다 목표보다 앞섰는지 늦었는지, 남은 횟수를 한 번에 몇 초 안에 달려야 하는지 보여줍니다.</p>
+          </div>
+          <div class="two">
+            <div class="field">
+              <label for="legM">1회 거리 (m)</label>
+              <input type="number" id="legM" min="5" max="100" step="1" value="20">
+            </div>
+            <div class="field">
+              <label for="perScan">스캔 1번 = 몇 회</label>
+              <select id="perScan">
+                <option value="2" selected>2회 (왕복)</option>
+                <option value="1">1회 (편도)</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="gapSec">중복 인식 방지 (초)</label>
+            <input type="number" id="gapSec" min="2" max="60" step="1" value="6">
+            <p class="note">같은 카드가 이 시간 안에 다시 읽히면 세지 않습니다. 가장 빠른 학생의 왕복 시간보다 짧게 두세요.</p>
+          </div>
+        </div>
+
+        <div class="panel" id="guidePanel" style="margin-top:16px">
+          <h2>운영 순서</h2>
+          <ol class="guide">
+            <li>QR 카드 탭에서 학생 번호 카드를 만들어 목걸이나 손목 밴드로 착용합니다.</li>
+            <li>태블릿을 출발선 옆에 세우고 카메라를 켭니다.</li>
+            <li>출발과 함께 시계가 돌고, 학생은 왕복해 돌아올 때마다 카드를 비춥니다.</li>
+            <li>측정이 끝나면 기록 탭에서 결과와 지난 측정 대비 변화를 확인합니다.</li>
+          </ol>
+        </div>
+
+        <div class="panel" id="boardPanel" hidden>
+          <h2>달리는 중 <span id="runnerCount" class="num"></span></h2>
+          <div class="board" id="board"></div>
+        </div>
       </div>
     </div>
-    
-    <div id="distanceInputGroup" class="input-group" style="display:none;">
-      <label for="maxDistanceInput">목표 거리 (km):</label>
-      <input type="number" id="maxDistanceInput" placeholder="예: 10" min="1" step="0.5">
-    </div>
-    
-    <div class="modal-buttons">
-      <button onclick="cancelModeSelect()" class="cancel">취소</button>
-      <button id="confirmModeBtn" onclick="confirmMode()" disabled>확인</button>
-    </div>
-  </div>
-</div>
+  </section>
 
-<!-- 운동 종료 모달 -->
-<div id="endModal" class="pace-end-modal">
-  <div class="end-modal-content">
-    <div class="end-icon">🏁</div>
-    <div class="end-title">운동 종료!</div>
-    <div class="end-time">
-      <span id="endStudentName">-</span>
-      <strong id="endTotalTime">00:00:00</strong>
+  <!-- 기록 -->
+  <section id="viewRecords" class="view" hidden>
+    <div class="panel">
+      <div class="field">
+        <label for="sessSelect">측정 선택</label>
+        <select id="sessSelect"></select>
+      </div>
+      <div id="recordBody"></div>
+      <div class="row no-print" id="recordActions" hidden>
+        <button class="btn-lane" id="csvBtn">CSV 내려받기</button>
+        <button class="btn-plain" id="delSessBtn">이 측정 삭제</button>
+      </div>
     </div>
-  </div>
-</div>
+  </section>
+
+  <!-- QR 카드 -->
+  <section id="viewCards" class="view" hidden>
+    <div class="panel">
+      <div class="no-print">
+        <h2>QR 카드 만들기</h2>
+        <p class="note" style="margin-bottom:12px">카드에는 이름 없이 학년·반·번호만 담깁니다. 인쇄해서 목걸이 명찰이나 손목 밴드에 넣어 쓰세요.</p>
+        <div class="two">
+          <div class="field">
+            <label for="cGrade">학년 (비워도 됨)</label>
+            <input type="number" id="cGrade" min="1" max="6" value="1">
+          </div>
+          <div class="field">
+            <label for="cClass">반</label>
+            <input type="number" id="cClass" min="1" max="30" value="1">
+          </div>
+          <div class="field">
+            <label for="cFrom">시작 번호</label>
+            <input type="number" id="cFrom" min="1" max="60" value="1">
+          </div>
+          <div class="field">
+            <label for="cTo">끝 번호</label>
+            <input type="number" id="cTo" min="1" max="60" value="28">
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn-lane" id="makeCardsBtn">카드 만들기</button>
+          <button class="btn-plain" id="demoCardsBtn">시연용 카드 4장</button>
+          <button class="btn-plain" id="printBtn">인쇄</button>
+        </div>
+      </div>
+      <div class="cards" id="cards"></div>
+    </div>
+  </section>
+</main>
+
+<div id="flash" aria-live="assertive"><div class="f-who"></div><div class="f-big num"></div><div class="f-sub num"></div><div class="f-pace num"></div></div>
+<div id="toast" role="status"></div>
+<canvas id="canvas" hidden></canvas>
 
 <script>
-  let video = document.getElementById('video');
-  let canvas = document.getElementById('canvas');
-  let canvasContext = canvas.getContext('2d');
-  let scanning = false;
-  let cameraStarted = false;
-  let frameCount = 0;
-  let lastQRData = null;
-  let qrCooldown = false;
-  let scanLoopInterval = null;
-  
-  // 메시지 큐
-  let messageQueue = [];
-  let messageDisplaying = false;
-  
-  // 세션 설정
-  let currentSessionId = null;
-  let sessionMode = null;
-  let maxDistance = null;
-  let endedStudents = {};
-  
-  // 네트워크
-  let isOnline = navigator.onLine;
+(() => {
+  'use strict';
 
-  // ================================================
-  // 네트워크 상태
-  // ================================================
-  window.addEventListener('online', () => {
-    isOnline = true;
-    updateNetworkStatus();
-    queueMessage('🟢 온라인', 'success');
-  });
+  // ------------------------------------------------------------
+  // 저장소 (이 도구 전용 키만 사용)
+  // ------------------------------------------------------------
+  const NS = 'pjourney-shuttle:';
+  const store = {
+    get(k, fallback) {
+      try { const v = localStorage.getItem(NS + k); return v === null ? fallback : JSON.parse(v); }
+      catch (e) { return fallback; }
+    },
+    set(k, v) {
+      try { localStorage.setItem(NS + k, JSON.stringify(v)); }
+      catch (e) { toast('기기 저장 공간이 부족해 기록을 저장하지 못했습니다'); }
+    },
+    del(k) { localStorage.removeItem(NS + k); }
+  };
 
-  window.addEventListener('offline', () => {
-    isOnline = false;
-    updateNetworkStatus();
-    queueMessage('⚠️ 오프라인 모드', 'error');
-  });
+  const $ = (id) => document.getElementById(id);
+  const MAX_HISTORY = 60;
 
-  function updateNetworkStatus() {
-    const status = document.getElementById('networkStatus');
-    if (isOnline) {
-      status.className = 'network-status online';
-      status.textContent = '🟢 온라인';
-    } else {
-      status.className = 'network-status offline';
-      status.textContent = '⚠️ 오프라인';
-    }
+  // ------------------------------------------------------------
+  // 상태
+  // ------------------------------------------------------------
+  let session = store.get('current', null);   // 진행 중인 측정
+  let history = store.get('history', []);     // 끝난 측정
+  let tick = null;
+  let lastFreshId = null;
+
+  // ------------------------------------------------------------
+  // 유틸
+  // ------------------------------------------------------------
+  function fmt(ms) {
+    if (ms == null || isNaN(ms)) return '-';
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const m = Math.floor(s / 60);
+    return String(m).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }
+  function fmtSec(ms) { return ms == null ? '-' : (ms / 1000).toFixed(1) + '초'; }
+
+  // QR 내용 → 표시 이름. 이 도구용 카드가 아니면 null
+  function parseId(raw) {
+    const t = String(raw || '').trim().toUpperCase();
+    let m;
+    if ((m = t.match(/^(\d{1,2})-(\d{1,2})-(\d{1,2})$/))) return { id: `${+m[1]}-${+m[2]}-${+m[3]}`, name: `${+m[1]}학년 ${+m[2]}반 ${+m[3]}번` };
+    if ((m = t.match(/^(\d{1,2})-(\d{1,2})$/))) return { id: `${+m[1]}-${+m[2]}`, name: `${+m[1]}반 ${+m[2]}번` };
+    if ((m = t.match(/^DEMO-(\d{1,2})$/))) return { id: `DEMO-${+m[1]}`, name: `시연 ${+m[1]}` };
+    return null;
   }
 
-  // ================================================
-  // 메시지 큐
-  // ================================================
-  function queueMessage(msg, type) {
-    messageQueue.push({msg, type});
-    processMessageQueue();
+  let toastTimer = null;
+  function toast(msg) {
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
   }
 
-  function processMessageQueue() {
-    if (messageDisplaying || messageQueue.length === 0) return;
-    
-    messageDisplaying = true;
-    const {msg, type} = messageQueue.shift();
-    
-    const msgDiv = document.getElementById('message');
-    msgDiv.textContent = msg;
-    msgDiv.className = 'message show ' + type;
-    
-    setTimeout(() => {
-      msgDiv.classList.remove('show');
-      messageDisplaying = false;
-      processMessageQueue();
-    }, 2000);
-  }
-
-  function clearMessage() {
-    const msgDiv = document.getElementById('message');
-    msgDiv.classList.remove('show');
-    messageQueue = [];
-  }
-
-  // ================================================
-  // 통신 (재시도 로직)
-  // ================================================
-  async function fetchWithRetry(url, retries = 3) {
-    for (let i = 0; i < retries; i++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-        
-        const response = await fetch(url, {
-          method: 'GET',
-          signal: controller.signal,
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const data = await response.json();
-        return data;
-        
-      } catch (error) {
-        if (i === retries - 1) {
-          throw error;
-        }
-        await new Promise(resolve => setTimeout(resolve, (i + 1) * 1000));
+  let flashTimer = null;
+  function flash(who, big, sub, kind, pace) {
+    const el = $('flash');
+    el.className = '';
+    void el.offsetWidth;
+    el.classList.add('show');
+    if (kind) el.classList.add(kind);
+    el.querySelector('.f-who').textContent = who;
+    el.querySelector('.f-big').textContent = big;
+    el.querySelector('.f-sub').textContent = sub;
+    const pe = el.querySelector('.f-pace');
+    pe.innerHTML = '';
+    if (pace) {
+      if (pace.pill) {
+        const b = document.createElement('span');
+        b.className = 'pill ' + pace.pillKind;
+        b.textContent = pace.pill;
+        pe.appendChild(b);
       }
+      if (pace.text) pe.appendChild(document.createTextNode(pace.text));
     }
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { el.className = ''; }, kind === 'finish' ? 2000 : (pace ? 1600 : 1100));
   }
+  $('flash').addEventListener('click', () => { $('flash').className = ''; });
 
-  // ================================================
-  // 오프라인 데이터 관리
-  // ================================================
-  function saveOfflineData(qrText, scanCount, distance, totalTime, studentName) {
-    let offlineScans = JSON.parse(localStorage.getItem('offlineScans') || '[]');
-    
-    offlineScans.push({
-      qr: qrText,
-      scanCount: scanCount,
-      distance: distance,
-      totalTime: totalTime,
-      studentName: studentName,
-      timestamp: new Date().toISOString(),
-      sessionId: currentSessionId
-    });
-    
-    localStorage.setItem('offlineScans', JSON.stringify(offlineScans));
-    updateOfflineCount();
-  }
-
-  function updateOfflineCount() {
-    const offlineScans = JSON.parse(localStorage.getItem('offlineScans') || '[]');
-    document.getElementById('offlineCount').textContent = offlineScans.length;
-  }
-
-  async function uploadData() {
-    const offlineScans = JSON.parse(localStorage.getItem('offlineScans') || '[]');
-    
-    if (offlineScans.length === 0) {
-      queueMessage('업로드할 데이터 없음', 'error');
-      return;
-    }
-    
-    queueMessage('📤 업로드 중...', 'info');
-    
-    let success = 0;
-    let fail = 0;
-    
-    for (let scan of offlineScans) {
-      try {
-        const url = 'https://script.google.com/macros/s/AKfycbxC92EzuvA5WamPJ1yNwgFleCLgjSgoKdpUm3e-rkBjFawWqseG9hXZ0I7ePQwOa1sP/exec?qr=' + encodeURIComponent(scan.qr) + '&sessionId=' + encodeURIComponent(scan.sessionId);
-        
-        const result = await fetchWithRetry(url, 2);
-        
-        if (result.success) {
-          success++;
-        } else {
-          fail++;
-        }
-      } catch (error) {
-        fail++;
-      }
-    }
-    
-    if (success > 0) {
-      localStorage.setItem('offlineScans', JSON.stringify(offlineScans.slice(success)));
-      updateOfflineCount();
-      queueMessage(`✅ ${success}개 업로드 완료`, 'success');
-    } else {
-      queueMessage('❌ 업로드 실패', 'error');
-    }
-  }
-
-  function clearData() {
-    if (confirm('정말로 로컬 데이터를 모두 삭제하시겠습니까?')) {
-      localStorage.removeItem('offlineScans');
-      updateOfflineCount();
-      queueMessage('✅ 삭제됨', 'success');
-    }
-  }
-
-  // ================================================
-  // 초기화
-  // ================================================
-  function init() {
-    updateNetworkStatus();
-    updateOfflineCount();
-    
-    currentSessionId = localStorage.getItem('currentSessionId');
-    sessionMode = localStorage.getItem('sessionMode');
-    maxDistance = localStorage.getItem('maxDistance');
-    
-    if (!currentSessionId || !sessionMode) {
-      showModeModal();
-    } else {
-      displaySessionInfo();
-      updateModeBadge();
-    }
-  }
-
-  // ================================================
-  // 모드 선택
-  // ================================================
-  let selectedMode = null;
-
-  function showModeModal() {
-    document.getElementById('modeModal').classList.add('show');
-  }
-
-  function selectMode(mode) {
-    selectedMode = mode;
-    
-    document.getElementById('maxDistanceBtn').classList.remove('selected');
-    document.getElementById('freeBtn').classList.remove('selected');
-    
-    if (mode === 'maxDistance') {
-      document.getElementById('maxDistanceBtn').classList.add('selected');
-      document.getElementById('distanceInputGroup').style.display = 'block';
-    } else {
-      document.getElementById('freeBtn').classList.add('selected');
-      document.getElementById('distanceInputGroup').style.display = 'none';
-    }
-    document.getElementById('confirmModeBtn').disabled = false;
-  }
-
-  function confirmMode() {
-    if (!selectedMode) {
-      queueMessage('모드를 선택하세요', 'error');
-      return;
-    }
-    
-    if (selectedMode === 'maxDistance') {
-      const distance = parseFloat(document.getElementById('maxDistanceInput').value);
-      if (!distance || distance <= 0) {
-        queueMessage('거리를 입력하세요', 'error');
-        return;
-      }
-      maxDistance = distance;
-      localStorage.setItem('maxDistance', maxDistance);
-    }
-    
-    generateNewSessionId();
-    sessionMode = selectedMode;
-    localStorage.setItem('sessionMode', sessionMode);
-    
-    document.getElementById('modeModal').classList.remove('show');
-    displaySessionInfo();
-    updateModeBadge();
-    queueMessage('✅ 준비 완료!', 'success');
-  }
-
-  function cancelModeSelect() {
-    if (confirm('취소하시겠습니까?')) {
-      document.getElementById('modeModal').classList.remove('show');
-    }
-  }
-
-  function generateNewSessionId() {
-    currentSessionId = 'SESSION_' + Date.now();
-    localStorage.setItem('currentSessionId', currentSessionId);
-    endedStudents = {};
-  }
-
-  function displaySessionInfo() {
-    const dateObj = new Date(parseInt(currentSessionId.split('_')[1]));
-    const timeStr = dateObj.toLocaleTimeString('ko-KR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    document.getElementById('sessionDisplay').textContent = timeStr;
-  }
-
-  function updateModeBadge() {
-    const badge = document.getElementById('modeBadge');
-    if (sessionMode === 'maxDistance') {
-      badge.className = 'mode-badge max-distance';
-      badge.textContent = `📏 ${maxDistance}km`;
-      document.getElementById('batchEndBtn').style.display = 'none';
-    } else {
-      badge.className = 'mode-badge';
-      badge.textContent = '🆓 자율';
-      document.getElementById('batchEndBtn').style.display = 'block';
-    }
-  }
-
-  function startNewSession() {
-    if (cameraStarted) {
-      queueMessage('⚠️ 카메라 중지 후 진행', 'error');
-      return;
-    }
-    
-    if (confirm('새로 시작?')) {
-      localStorage.clear();
-      location.reload();
-    }
-  }
-
-  // ================================================
-  // 카메라
-  // ================================================
-  async function startCamera() {
-    if (cameraStarted || !sessionMode) return;
-    
-    cameraStarted = true;
-    
+  // 소리·진동 (출발 버튼을 누를 때 오디오를 깨움)
+  let audio = null;
+  function wakeAudio() {
     try {
-      const facingMode = document.getElementById('cameraSelect').value;
-      const constraints = {
-        video: { 
-          facingMode: facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+    } catch (e) { audio = null; }
+  }
+  function beep(freq, dur, when = 0) {
+    if (!audio) return;
+    const o = audio.createOscillator();
+    const g = audio.createGain();
+    o.frequency.value = freq;
+    o.connect(g); g.connect(audio.destination);
+    const t = audio.currentTime + when;
+    g.gain.setValueAtTime(0.25, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.start(t); o.stop(t + dur);
+  }
+  function buzz(p) { if (navigator.vibrate) navigator.vibrate(p); }
+
+  // ------------------------------------------------------------
+  // 설정
+  // ------------------------------------------------------------
+  function readSettings() {
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    return {
+      mode,
+      target: Math.max(1, parseInt($('target').value, 10) || 40),
+      capMin: Math.min(30, Math.max(1, parseFloat($('capMin').value) || 8)),
+      legM: Math.min(100, Math.max(5, parseInt($('legM').value, 10) || 20)),
+      perScan: parseInt($('perScan').value, 10) === 1 ? 1 : 2,
+      gapSec: Math.min(60, Math.max(2, parseInt($('gapSec').value, 10) || 6)),
+      goalSec: Math.max(0, (parseInt($('goalMin').value, 10) || 0) * 60 + Math.min(59, parseInt($('goalS').value, 10) || 0)),
+      capGoal: Math.max(0, parseInt($('capGoal').value, 10) || 0)
+    };
+  }
+  function writeSettings(s) {
+    document.querySelector(`input[name="mode"][value="${s.mode}"]`).checked = true;
+    $('target').value = s.target;
+    $('capMin').value = s.capMin;
+    $('legM').value = s.legM;
+    $('perScan').value = String(s.perScan);
+    $('gapSec').value = s.gapSec;
+    const gs = s.goalSec || 0;
+    $('goalMin').value = gs ? Math.floor(gs / 60) : '';
+    $('goalS').value = gs ? gs % 60 : '';
+    $('capGoal').value = s.capGoal || '';
+    syncModeFields();
+  }
+  function syncModeFields() {
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    document.querySelectorAll('input[name="mode"]').forEach(r => r.parentElement.classList.toggle('on', r.checked));
+    $('targetField').hidden = mode !== 'target';
+    $('capField').hidden = mode !== 'timecap';
+    $('target').step = $('perScan').value;
+    $('capGoal').step = $('perScan').value;
+  }
+  document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener('change', () => { syncModeFields(); saveDraft(); }));
+  ['target', 'capMin', 'legM', 'perScan', 'gapSec', 'label', 'goalMin', 'goalS', 'capGoal'].forEach(id => $(id).addEventListener('change', () => { syncModeFields(); saveDraft(); }));
+  function saveDraft() { store.set('draft', { ...readSettings(), label: $('label').value }); }
+
+  function setSetupLocked(locked) {
+    $('setupPanel').querySelectorAll('input, select').forEach(el => { el.disabled = locked; });
+  }
+
+  // ------------------------------------------------------------
+  // 측정 흐름
+  // ------------------------------------------------------------
+  function startSession() {
+    wakeAudio();
+    const s = readSettings();
+    const label = $('label').value.trim() || defaultLabel();
+    session = { id: 'S' + Date.now(), label, settings: s, startAt: Date.now(), endAt: null, runners: {} };
+    store.set('current', session);
+    beep(660, .15); beep(990, .3, .18);
+    buzz(200);
+    renderRunning();
+    toast('출발! 왕복해 올 때마다 카드를 비추세요');
+  }
+
+  function defaultLabel() {
+    const d = new Date();
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 측정`;
+  }
+
+  function elapsed() { return session ? Date.now() - session.startAt : 0; }
+  function capMs() { return session && session.settings.mode === 'timecap' ? session.settings.capMin * 60000 : null; }
+
+  // 목표 기록: n회를 t밀리초 안에
+  function goalOf(s) {
+    if (s.mode === 'target' && s.goalSec > 0) return { n: s.target, t: s.goalSec * 1000 };
+    if (s.mode === 'timecap' && s.capGoal > 0) return { n: s.capGoal, t: s.capMin * 60000 };
+    return null;
+  }
+  // cnt회를 now 시점에 마쳤을 때 목표와의 차이, 남은 횟수에 필요한 페이스
+  function paceInfo(s, cnt, now) {
+    const g = goalOf(s);
+    if (!g) return null;
+    const expected = g.t * Math.min(cnt, g.n) / g.n;   // 고른 페이스라면 이 횟수에 도달했어야 할 시각
+    const diff = expected - now;                        // +면 앞섬, -면 늦음
+    const remainCnt = g.n - cnt;
+    const status = Math.abs(diff) < 500
+      ? { pill: '목표 페이스', pillKind: 'ahead' }
+      : diff > 0 ? { pill: `${(diff / 1000).toFixed(1)}초 앞섬`, pillKind: 'ahead' }
+                 : { pill: `${(-diff / 1000).toFixed(1)}초 늦음`, pillKind: 'behind' };
+    if (remainCnt <= 0) return { ...status, text: `목표 ${g.n}회 달성`, diff, done: true };
+    const remainTime = g.t - now;
+    if (remainTime <= 0) return { pill: '목표 시간 지남', pillKind: 'behind', text: `남은 ${remainCnt}회`, diff };
+    const need = remainTime / Math.ceil(remainCnt / s.perScan);
+    return { ...status, text: `남은 ${remainCnt}회는 ${unitOf(s)} ${(need / 1000).toFixed(1)}초 안에`, diff, need };
+  }
+  function goalPaceText(s) {
+    const g = goalOf(s);
+    if (!g) return '';
+    return `목표 페이스 ${unitOf(s)} ${(g.t / Math.ceil(g.n / s.perScan) / 1000).toFixed(1)}초`;
+  }
+
+  function unitOf(settings) { return settings.perScan === 2 ? '왕복' : '구간'; }
+  function countOf(r) { return r.scans.length * session.settings.perScan; }
+
+  function recordLap(raw, source) {
+    const p = parseId(raw);
+    if (!p) {
+      if (source === 'manual') toast('3-15 또는 1-3-15 형식으로 입력하세요');
+      else toast('이 도구용 QR 카드가 아닙니다');
+      return;
+    }
+    if (!session) {
+      toast('출발을 누른 뒤에 기록됩니다');
+      return;
+    }
+    const now = elapsed();
+    const cap = capMs();
+    if (cap && now >= cap) return;
+
+    const r = session.runners[p.id] || (session.runners[p.id] = { name: p.name, scans: [], finishedAt: null });
+    if (r.finishedAt != null) {
+      flash(p.name, '완주', `이미 ${fmt(r.finishedAt)}에 완주했습니다`, 'warn');
+      return;
+    }
+    const last = r.scans.length ? r.scans[r.scans.length - 1] : 0;
+    const gap = session.settings.gapSec * 1000;
+    if (r.scans.length && now - last < gap) {
+      if (source === 'manual') toast(`${p.name}: ${Math.ceil((gap - (now - last)) / 1000)}초 뒤에 다시 기록할 수 있습니다`);
+      return; // 카메라 앞에 카드가 머무는 경우 조용히 무시
+    }
+    r.scans.push(now);
+    const cnt = countOf(r);
+    const split = now - last;
+    const s = session.settings;
+
+    if (s.mode === 'target' && cnt >= s.target) {
+      r.finishedAt = now;
+      store.set('current', session);
+      const g = goalOf(s);
+      let vs = null;
+      if (g) {
+        const d = Math.round((g.t - now) / 1000);
+        vs = { pill: d >= 0 ? `목표보다 ${d}초 빠름` : `목표보다 ${-d}초 느림`, pillKind: d >= 0 ? 'ahead' : 'behind' };
+      }
+      flash(p.name, `${cnt}회`, `완주 ${fmt(now)}`, 'finish', vs);
+      beep(880, .15); beep(1175, .15, .17); beep(1568, .35, .34);
+      buzz([120, 60, 120, 60, 240]);
+    } else {
+      store.set('current', session);
+      const pace = paceInfo(s, cnt, now);
+      const remain = s.mode === 'target' && !pace ? ` · 남은 ${s.target - cnt}회` : '';
+      flash(p.name, `${cnt}회`, `이번 ${unitOf(s)} ${fmtSec(split)}${remain}`, null, pace);
+      beep(1046, .12);
+      buzz(80);
+    }
+    lastFreshId = p.id;
+    renderBoard();
+  }
+
+  function endSession(auto) {
+    if (!session) return;
+    const cap = capMs();
+    session.endAt = cap && auto ? cap : elapsed();
+    history.unshift(session);
+    if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
+    store.set('history', history);
+    const endedId = session.id;
+    session = null;
+    store.del('current');
+    clearInterval(tick); tick = null;
+    beep(523, .5);
+    buzz(400);
+    renderIdle();
+    showView('viewRecords');
+    fillSessionSelect(endedId);
+    toast(auto ? '제한 시간이 끝나 측정을 마쳤습니다' : '측정을 마쳤습니다');
+  }
+
+  // ------------------------------------------------------------
+  // 화면 갱신
+  // ------------------------------------------------------------
+  function renderIdle() {
+    $('startBtn').hidden = false;
+    $('endBtn').hidden = true;
+    $('boardPanel').hidden = true;
+    $('guidePanel').hidden = false;
+    $('setupPanel').hidden = false;
+    $('capbar').hidden = true;
+    setSetupLocked(false);
+    $('clock').textContent = '00:00';
+    $('clockSub').textContent = '설정을 확인하고 출발을 누르세요';
+  }
+
+  function renderRunning() {
+    $('startBtn').hidden = true;
+    $('endBtn').hidden = false;
+    $('boardPanel').hidden = false;
+    $('guidePanel').hidden = true;
+    $('setupPanel').hidden = true;
+    writeSettings(session.settings);
+    $('label').value = session.label;
+    setSetupLocked(true);
+    $('capbar').hidden = !capMs();
+    renderBoard();
+    updateClock();
+    clearInterval(tick);
+    tick = setInterval(updateClock, 250);
+  }
+
+  function updateClock() {
+    if (!session) return;
+    const e = elapsed();
+    const cap = capMs();
+    const s = session.settings;
+    if (cap) {
+      const left = cap - e;
+      $('clock').textContent = fmt(Math.max(0, left));
+      const gp = goalPaceText(s);
+      $('clockSub').textContent = `${session.label} · 남은 시간` + (s.capGoal > 0 ? ` · 목표 ${s.capGoal}회` : '') + (gp ? ` · ${gp}` : '');
+      $('capbar').firstElementChild.style.width = Math.min(100, (e / cap) * 100) + '%';
+      if (left <= 0) { endSession(true); return; }
+    } else {
+      $('clock').textContent = fmt(e);
+      let goal = s.mode === 'target' ? ` · 목표 ${s.target}회` : '';
+      if (s.mode === 'target' && s.goalSec > 0) goal += ` ${fmt(s.goalSec * 1000)} · ${goalPaceText(s)}`;
+      $('clockSub').textContent = `${session.label}${goal}`;
+    }
+  }
+
+  function renderBoard() {
+    if (!session) return;
+    const list = Object.entries(session.runners).map(([id, r]) => ({ id, ...r }));
+    const s = session.settings;
+    list.sort((a, b) => {
+      const d = b.scans.length - a.scans.length;
+      if (d) return d;
+      return (a.scans[a.scans.length - 1] || 0) - (b.scans[b.scans.length - 1] || 0);
+    });
+    $('runnerCount').textContent = list.length ? `${list.length}명` : '';
+    const board = $('board');
+    if (!list.length) {
+      board.innerHTML = '<p class="empty">아직 기록이 없습니다. 첫 왕복을 마친 학생부터 표시됩니다.</p>';
+      return;
+    }
+    board.innerHTML = '';
+    list.forEach(r => {
+      const n = r.scans.length;
+      const lastSplit = n ? r.scans[n - 1] - (n > 1 ? r.scans[n - 2] : 0) : null;
+      const tile = document.createElement('div');
+      tile.className = 'tile' + (r.finishedAt != null ? ' done' : '') + (r.id === lastFreshId ? ' fresh' : '');
+      tile.innerHTML = `<div class="who"></div><div class="cnt num">${n * s.perScan}<span>회</span></div><div class="split num"></div><div class="pace num"></div>`;
+      tile.querySelector('.who').textContent = r.name;
+      tile.querySelector('.split').textContent = r.finishedAt != null ? `완주 ${fmt(r.finishedAt)}` : `최근 ${unitOf(s)} ${fmtSec(lastSplit)}`;
+      const pi = n && r.finishedAt == null ? paceInfo(s, n * s.perScan, r.scans[n - 1]) : null;
+      if (pi) {
+        const el = tile.querySelector('.pace');
+        el.textContent = pi.need ? `${pi.pill} · 다음 ${(pi.need / 1000).toFixed(1)}초` : pi.pill;
+        el.classList.add(pi.pillKind);
+      }
+      board.appendChild(tile);
+    });
+  }
+
+  // ------------------------------------------------------------
+  // 기록 화면
+  // ------------------------------------------------------------
+  function summarize(sess, r) {
+    const per = sess.settings.perScan;
+    const n = r.scans.length;
+    const splits = r.scans.map((t, i) => t - (i ? r.scans[i - 1] : 0));
+    const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    const k = Math.min(3, Math.floor(n / 2));
+    return {
+      count: n * per,
+      meters: n * per * sess.settings.legM,
+      finish: r.finishedAt,
+      lastAt: n ? r.scans[n - 1] : null,
+      avgSplit: avg(splits),
+      early: k ? avg(splits.slice(0, k)) : null,
+      late: k ? avg(splits.slice(-k)) : null,
+      splits
+    };
+  }
+
+  // 같은 학생의 바로 이전 측정(같은 종료 방식·거리)을 찾음
+  function previousOf(sess, id) {
+    const idx = history.findIndex(h => h.id === sess.id);
+    for (let i = idx + 1; i < history.length; i++) {
+      const h = history[i];
+      if (h.settings.mode === sess.settings.mode && h.settings.legM === sess.settings.legM && h.runners[id]) {
+        if (sess.settings.mode === 'timecap' && h.settings.capMin !== sess.settings.capMin) continue;
+        if (sess.settings.mode === 'target' && h.settings.target !== sess.settings.target) continue;
+        return { sess: h, sum: summarize(h, h.runners[id]) };
+      }
+    }
+    return null;
+  }
+
+  function changeCell(sess, cur, prev) {
+    if (!prev) return '<span style="color:var(--muted)">첫 기록</span>';
+    if (sess.settings.mode === 'target') {
+      if (cur.finish != null && prev.sum.finish != null) {
+        const d = Math.round((prev.sum.finish - cur.finish) / 1000);
+        if (d === 0) return '같음';
+        return d > 0 ? `<span class="up">${d}초 단축</span>` : `<span class="down">${-d}초 늘어남</span>`;
+      }
+    }
+    const d = cur.count - prev.sum.count;
+    if (d === 0) return '같음';
+    return d > 0 ? `<span class="up">+${d}회</span>` : `<span class="down">${d}회</span>`;
+  }
+
+  function fillSessionSelect(selectId) {
+    const sel = $('sessSelect');
+    sel.innerHTML = '';
+    if (!history.length) {
+      sel.innerHTML = '<option value="">저장된 측정이 없습니다</option>';
+      sel.disabled = true;
+      renderRecord(null);
+      return;
+    }
+    sel.disabled = false;
+    history.forEach(h => {
+      const o = document.createElement('option');
+      o.value = h.id;
+      const d = new Date(h.startAt);
+      o.textContent = `${h.label} (${d.getMonth() + 1}/${d.getDate()}, ${Object.keys(h.runners).length}명)`;
+      sel.appendChild(o);
+    });
+    sel.value = selectId && history.some(h => h.id === selectId) ? selectId : history[0].id;
+    renderRecord(history.find(h => h.id === sel.value));
+  }
+  $('sessSelect').addEventListener('change', e => renderRecord(history.find(h => h.id === e.target.value)));
+
+  function modeText(s) {
+    if (s.mode === 'target') return `목표 ${s.target}회` + (s.goalSec > 0 ? ` ${fmt(s.goalSec * 1000)}` : '');
+    if (s.mode === 'timecap') return `제한 시간 ${s.capMin}분` + (s.capGoal > 0 ? ` 목표 ${s.capGoal}회` : '');
+    return '직접 종료';
+  }
+
+  function goalResult(sess, u) {
+    const s = sess.settings;
+    const g = goalOf(s);
+    if (!g) return null;
+    if (s.mode === 'target') {
+      if (u.finish == null) return { text: '미완주', cls: '', raw: '미완주' };
+      const d = Math.round((g.t - u.finish) / 1000);
+      return d >= 0 ? { text: `${d}초 빠름`, cls: 'up', raw: `+${d}초` } : { text: `${-d}초 느림`, cls: 'down', raw: `${d}초` };
+    }
+    const d = u.count - g.n;
+    return d >= 0 ? { text: d ? `달성 (+${d}회)` : '달성', cls: 'up', raw: `+${d}회` } : { text: `${-d}회 부족`, cls: 'down', raw: `${d}회` };
+  }
+
+  function renderRecord(sess) {
+    const body = $('recordBody');
+    $('recordActions').hidden = !sess;
+    if (!sess) {
+      body.innerHTML = '<p class="empty">측정을 마치면 이곳에 학생별 기록이 쌓입니다.</p>';
+      return;
+    }
+    const s = sess.settings;
+    const rows = Object.entries(sess.runners).map(([id, r]) => ({ id, name: r.name, sum: summarize(sess, r), prev: previousOf(sess, id) }));
+    rows.sort((a, b) => {
+      if (s.mode === 'target') {
+        const fa = a.sum.finish ?? Infinity, fb = b.sum.finish ?? Infinity;
+        if (fa !== fb) return fa - fb;
+      }
+      return b.sum.count - a.sum.count || (a.sum.lastAt ?? 0) - (b.sum.lastAt ?? 0);
+    });
+    const d = new Date(sess.startAt);
+    const meta = `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}. · ${modeText(s)} · 1회 ${s.legM}m · 측정 시간 ${fmt(sess.endAt)} · ${rows.length}명`;
+
+    if (!rows.length) {
+      body.innerHTML = `<p class="sess-meta"></p><p class="empty">이 측정에는 기록된 학생이 없습니다.</p>`;
+      body.querySelector('.sess-meta').textContent = meta;
+      return;
+    }
+
+    const recHead = s.mode === 'target' ? '완주 시간' : '마지막 기록';
+    const unit = unitOf(s);
+    let html = `<p class="sess-meta"></p><div class="table-scroll"><table>
+      <thead><tr><th>학생</th><th>횟수</th><th>거리</th><th>${recHead}</th><th>평균 ${unit}</th><th>처음→끝 ${unit}</th>${goalOf(s) ? '<th>목표 대비</th>' : ''}<th>지난 측정 대비</th></tr></thead><tbody>`;
+    const cols = goalOf(s) ? 8 : 7;
+    const goalCell = (u) => {
+      const gr = goalResult(sess, u);
+      return gr ? `<td class="${gr.cls}">${gr.text}</td>` : '';
+    };
+    rows.forEach((r, i) => {
+      const u = r.sum;
+      const rec = s.mode === 'target' ? (u.finish != null ? fmt(u.finish) : '미완주') : fmt(u.lastAt);
+      const pace = u.early != null ? `${(u.early / 1000).toFixed(1)} → ${(u.late / 1000).toFixed(1)}초` : '-';
+      html += `<tr class="clickable" data-i="${i}"><td class="nm"></td><td class="num">${u.count}회</td><td class="num">${u.meters}m</td>
+        <td class="num">${rec}</td><td class="num">${fmtSec(u.avgSplit)}</td><td class="num">${pace}</td>${goalCell(u)}<td>${changeCell(sess, u, r.prev)}</td></tr>
+        <tr class="splits" data-for="${i}" hidden><td colspan="${cols}"></td></tr>`;
+    });
+    html += `</tbody></table></div><p class="note" style="margin-top:8px">학생 줄을 누르면 ${unit}마다 걸린 시간이 펼쳐집니다. 처음→끝 ${unit}은 처음 3번과 마지막 3번 ${unit}의 평균입니다.</p>`;
+    body.innerHTML = html;
+    body.querySelector('.sess-meta').textContent = meta;
+    body.querySelectorAll('tr.clickable').forEach(tr => {
+      const r = rows[+tr.dataset.i];
+      tr.querySelector('.nm').textContent = r.name;
+      const sp = body.querySelector(`tr.splits[data-for="${tr.dataset.i}"]`);
+      sp.firstElementChild.textContent = r.sum.splits.length
+        ? r.sum.splits.map((ms, k) => `${k + 1}번째 ${(ms / 1000).toFixed(1)}초`).join('  ·  ')
+        : '기록 없음';
+      tr.addEventListener('click', () => { sp.hidden = !sp.hidden; });
+    });
+  }
+
+  function csvFor(sess) {
+    const s = sess.settings;
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = [['측정 이름', '측정 일시', '종료 방식', '1회 거리(m)', '학생 코드', '학생', '횟수', '거리(m)', '완주 시간', '마지막 기록', '평균 구간 시간(초)', '목표 대비', '지난 측정 대비(회)', '구간별 시간(초)']];
+    Object.entries(sess.runners).forEach(([id, r]) => {
+      const u = summarize(sess, r);
+      const prev = previousOf(sess, id);
+      lines.push([
+        sess.label, new Date(sess.startAt).toLocaleString('ko-KR'), modeText(s), s.legM, id, r.name,
+        u.count, u.meters, u.finish != null ? fmt(u.finish) : '', fmt(u.lastAt),
+        u.avgSplit != null ? (u.avgSplit / 1000).toFixed(1) : '',
+        (goalResult(sess, u) || {}).raw || '',
+        prev ? u.count - prev.sum.count : '',
+        u.splits.map(ms => (ms / 1000).toFixed(1)).join(' ')
+      ]);
+    });
+    return '\uFEFF' + lines.map(l => l.map(esc).join(',')).join('\r\n');
+  }
+
+  $('csvBtn').addEventListener('click', () => {
+    const sess = history.find(h => h.id === $('sessSelect').value);
+    if (!sess) return;
+    const blob = new Blob([csvFor(sess)], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `셔틀런_${sess.label.replace(/[\\/:*?"<>|\s]+/g, '_')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  });
+
+  $('delSessBtn').addEventListener('click', () => {
+    const id = $('sessSelect').value;
+    const sess = history.find(h => h.id === id);
+    if (!sess || !confirm(`'${sess.label}' 기록을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    history = history.filter(h => h.id !== id);
+    store.set('history', history);
+    fillSessionSelect();
+    toast('측정 기록을 삭제했습니다');
+  });
+
+  // ------------------------------------------------------------
+  // 카메라 · QR 인식
+  // ------------------------------------------------------------
+  const video = $('video');
+  const canvas = $('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  let stream = null;
+  let scanTimer = null;
+  let wakeLock = null;
+
+  async function keepAwake() {
+    try { if ('wakeLock' in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request('screen'); wakeLock && wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+    catch (e) { wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && stream) keepAwake(); });
+
+  async function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast('이 브라우저에서는 카메라를 쓸 수 없습니다. 번호 입력을 이용하세요');
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: $('facing').value, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false
-      };
-      
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      });
       video.srcObject = stream;
-      video.style.display = 'block';
-      
       await video.play();
-      
-      document.getElementById('startBtn').disabled = true;
-      document.getElementById('stopBtn').disabled = false;
-      document.getElementById('cameraSelect').disabled = true;
-      scanning = true;
-      
-      startScanLoop();
-      queueMessage('✅ 스캔 시작', 'success');
-      
-    } catch (error) {
-      queueMessage('❌ 카메라 오류', 'error');
-      cameraStarted = false;
-      document.getElementById('startBtn').disabled = false;
+      $('cam').classList.add('on');
+      $('camBtn').textContent = '카메라 끄기';
+      $('facing').disabled = true;
+      keepAwake();
+      scanTimer = setInterval(scanFrame, 110);
+    } catch (e) {
+      stream = null;
+      toast('카메라를 켜지 못했습니다. 브라우저의 카메라 권한을 확인하세요');
     }
   }
 
   function stopCamera() {
-    const stream = video.srcObject;
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+    clearInterval(scanTimer); scanTimer = null;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    video.srcObject = null;
+    $('cam').classList.remove('on');
+    $('camBtn').textContent = '카메라 켜기';
+    $('facing').disabled = false;
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  }
+
+  let lastRaw = null, lastRawAt = 0;
+  function scanFrame() {
+    if (!stream || video.readyState < 2 || typeof jsQR !== 'function') return;
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) return;
+    const scale = Math.min(1, 640 / vw);   // 작게 줄여 인식 속도를 높임
+    canvas.width = Math.round(vw * scale);
+    canvas.height = Math.round(vh * scale);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(img.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
+    if (!code || !code.data) return;
+    const t = Date.now();
+    if (code.data === lastRaw && t - lastRawAt < 1500) { lastRawAt = t; return; }
+    lastRaw = code.data; lastRawAt = t;
+    recordLap(code.data, 'camera');
+  }
+
+  $('camBtn').addEventListener('click', () => { wakeAudio(); stream ? stopCamera() : startCamera(); });
+
+  // ------------------------------------------------------------
+  // QR 카드
+  // ------------------------------------------------------------
+  function makeCards(items) {
+    const box = $('cards');
+    box.innerHTML = '';
+    if (typeof QRCode !== 'function') {
+      box.innerHTML = '<p class="empty">QR 생성 도구를 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침하세요.</p>';
+      return;
     }
-    video.style.display = 'none';
-    scanning = false;
-    cameraStarted = false;
-    
-    if (scanLoopInterval) {
-      clearInterval(scanLoopInterval);
-      scanLoopInterval = null;
-    }
-    
-    document.getElementById('startBtn').disabled = false;
-    document.getElementById('stopBtn').disabled = true;
-    document.getElementById('cameraSelect').disabled = false;
-    queueMessage('⏹️ 스캔 중지', 'info');
-  }
-
-  // ================================================
-  // 스캔 루프
-  // ================================================
-  function startScanLoop() {
-    if (scanLoopInterval) clearInterval(scanLoopInterval);
-    
-    scanLoopInterval = setInterval(() => {
-      if (!scanning) return;
-      
-      try {
-        frameCount++;
-        
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          
-          if (canvas.width === 0 || canvas.height === 0) return;
-          
-          canvasContext.drawImage(video, 0, 0);
-          const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
-          
-          if (typeof jsQR === 'function') {
-            const code = jsQR(imageData.data, canvas.width, canvas.height);
-            
-            if (code && !qrCooldown) {
-              if (lastQRData === code.data) {
-                return;
-              }
-              
-              lastQRData = code.data;
-              qrCooldown = true;
-              
-              handleQRData(code.data);
-            }
-          }
-        }
-      } catch (e) {
-        console.error('스캔 오류:', e);
-      }
-    }, 50);
-  }
-
-  // ================================================
-  // QR 처리 (개선된 통신)
-  // ================================================
-  async function handleQRData(qrText) {
-    scanning = false;
-    
-    try {
-      if (endedStudents[qrText]) {
-        queueMessage('❌ 이미 종료', 'error');
-        resumeScanning();
-        return;
-      }
-      
-      queueMessage('⏳ 처리중...', 'info');
-      
-      const appScriptUrl = 'https://script.google.com/macros/s/AKfycbxC92EzuvA5WamPJ1yNwgFleCLgjSgoKdpUm3e-rkBjFawWqseG9hXZ0I7ePQwOa1sP/exec?qr=' + encodeURIComponent(qrText) + '&sessionId=' + encodeURIComponent(currentSessionId);
-      
-      const result = await fetchWithRetry(appScriptUrl, 3);
-      
-      if (result.success) {
-        const scanCount = result.data.accumulated.scanCount;
-        const distance = result.data.accumulated.distance || 0;
-        const totalTime = result.data.accumulated.totalTime || "00:00:00";
-        const studentName = result.data.student.name;
-        
-        updateDisplay(result.data.student, distance, scanCount);
-        
-        // ★ 수정된 메시지 로직
-        if (scanCount === 1) {
-          queueMessage('🏃 러닝 시작!', 'success');
-        } else {
-          queueMessage(`⏱️ ${totalTime} | 거리: ${distance.toFixed(1)}km | 라운드 ${scanCount}`, 'info');
-        }
-        
-        // 최대거리 체크
-        if (sessionMode === 'maxDistance' && distance >= maxDistance) {
-          endedStudents[qrText] = true;
-          showEndModal(studentName, totalTime);
-          resumeScanning();
-          return;
-        }
-      } else {
-        queueMessage(`❌ ${result.message}`, 'error');
-      }
-    } catch (error) {
-      // 오프라인 모드 - 로컬 저장
-      queueMessage('📴 오프라인 모드', 'error');
-      const parts = qrText.split('-');
-      if (parts.length === 2) {
-        saveOfflineData(qrText, 1, 0.4, '00:00:00', parts[0] + '반 ' + parts[1] + '번');
-      }
-    }
-    
-    resumeScanning();
-  }
-
-  function resumeScanning() {
-    setTimeout(() => {
-      lastQRData = null;
-      qrCooldown = false;
-      scanning = true;
-    }, 300);
-  }
-
-  function updateDisplay(student, distance, scanCount) {
-    document.getElementById('stats').style.display = 'block';
-    document.getElementById('scanCount').textContent = scanCount;
-    document.getElementById('lastStudent').style.display = 'block';
-    document.getElementById('lastName').textContent = student.name;
-    
-    if (sessionMode === 'maxDistance') {
-      document.getElementById('distanceInfo').style.display = 'block';
-      document.getElementById('lastDistance').textContent = distance.toFixed(1);
-    }
-  }
-
-  // ================================================
-  // 모달
-  // ================================================
-  function showEndModal(studentName, totalTime) {
-    document.getElementById('endStudentName').textContent = studentName;
-    document.getElementById('endTotalTime').textContent = totalTime;
-    
-    const modal = document.getElementById('endModal');
-    modal.classList.add('show');
-    
-    setTimeout(() => {
-      modal.classList.remove('show');
-    }, 3000);
-  }
-
-  function batchEndSession() {
-    if (confirm('모든 학생 종료?')) {
-      stopCamera();
-      queueMessage('✅ 종료됨', 'success');
-      
-      setTimeout(() => {
-        localStorage.clear();
-        location.reload();
-      }, 2000);
-    }
-  }
-
-  // ================================================
-  // 시작
-  // ================================================
-  init();
-  
-  if ('wakeLock' in navigator) {
-    navigator.wakeLock.request('screen').catch(err => {
-      console.log('Wake Lock 실패:', err);
+    items.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = '<div class="qr"></div><div class="cap"></div><div class="code"></div>';
+      card.querySelector('.cap').textContent = it.name;
+      card.querySelector('.code').textContent = it.id;
+      box.appendChild(card);
+      new QRCode(card.querySelector('.qr'), { text: it.id, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
     });
   }
-</script>
 
+  $('makeCardsBtn').addEventListener('click', () => {
+    const g = parseInt($('cGrade').value, 10);
+    const c = parseInt($('cClass').value, 10);
+    let a = parseInt($('cFrom').value, 10), b = parseInt($('cTo').value, 10);
+    if (!c || !a || !b) { toast('반과 번호를 입력하세요'); return; }
+    if (a > b) [a, b] = [b, a];
+    if (b - a > 59) { toast('한 번에 60장까지 만들 수 있습니다'); return; }
+    const items = [];
+    for (let n = a; n <= b; n++) {
+      const raw = g ? `${g}-${c}-${n}` : `${c}-${n}`;
+      items.push(parseId(raw));
+    }
+    makeCards(items);
+  });
+  $('demoCardsBtn').addEventListener('click', () => makeCards([1, 2, 3, 4].map(n => parseId(`DEMO-${n}`))));
+  $('printBtn').addEventListener('click', () => {
+    if (!$('cards').children.length || $('cards').querySelector('.empty')) { toast('먼저 카드를 만드세요'); return; }
+    window.print();
+  });
+
+  // ------------------------------------------------------------
+  // 탭 · 버튼
+  // ------------------------------------------------------------
+  function showView(id) {
+    document.querySelectorAll('.view').forEach(v => { v.hidden = v.id !== id; });
+    document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === id)));
+    if (id === 'viewRecords') fillSessionSelect($('sessSelect').value);
+  }
+  document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
+
+  $('startBtn').addEventListener('click', startSession);
+  $('endBtn').addEventListener('click', () => { if (confirm('측정을 종료하고 기록을 저장할까요?')) endSession(false); });
+
+  function submitManual() {
+    wakeAudio();
+    const v = $('manualInput').value;
+    if (!v.trim()) return;
+    recordLap(v, 'manual');
+    $('manualInput').value = '';
+    $('manualInput').focus();
+  }
+  $('manualBtn').addEventListener('click', submitManual);
+  $('manualInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitManual(); });
+
+  function updateNet() { $('netBadge').textContent = navigator.onLine ? '' : '오프라인 · 기록은 이 기기에 저장됩니다'; }
+  window.addEventListener('online', updateNet);
+  window.addEventListener('offline', updateNet);
+  window.addEventListener('beforeunload', e => { if (session) { e.preventDefault(); e.returnValue = ''; } });
+
+  // ------------------------------------------------------------
+  // 시작
+  // ------------------------------------------------------------
+  updateNet();
+  const draft = store.get('draft', null);
+  if (draft) { writeSettings(draft); $('label').value = draft.label || ''; }
+  syncModeFields();
+  if (session) {
+    const cap = capMs();
+    if (cap && elapsed() >= cap) endSession(true);
+    else { renderRunning(); toast('진행 중이던 측정을 이어서 기록합니다'); }
+  } else {
+    renderIdle();
+  }
+
+})();
+</script>
 </body>
 </html>
