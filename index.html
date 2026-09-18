@@ -161,6 +161,11 @@
   @keyframes pop { from { transform: scale(1.04); opacity: .6; } to { transform: scale(1); opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { #flash.show { animation: none; } }
 
+  .demo-banner {
+    background: #FFF6D8; border: 2px solid var(--line); border-radius: 12px; padding: 10px 14px;
+    font-size: 13.5px; color: var(--court); margin-top: 12px;
+  }
+  .demo-banner b { display: block; font-size: 14.5px; margin-bottom: 2px; }
   #toast {
     position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60;
     background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; font-weight: 600;
@@ -313,8 +318,16 @@
             <li>출발과 함께 시계가 돌고, 학생은 왕복해 돌아올 때마다 카드를 비춥니다.</li>
             <li>측정이 끝나면 기록 탭에서 결과와 지난 측정 대비 변화를 확인합니다.</li>
           </ol>
+          <div class="row" style="margin-top:12px">
+            <button class="btn-lane" id="demoBtn">QR 카드 없이 체험하기</button>
+          </div>
+          <p class="note">심폐·근지구력 서킷(셔틀런 20m×4 → 버피 5 → 셔틀런 20m×4 → 싯업 10)을 도는 가상 학생 3명이 자동으로 기록됩니다. 카메라와 QR 카드 없이 화면과 기록을 그대로 볼 수 있습니다.</p>
         </div>
 
+        <div class="panel demo-banner" id="demoBanner" hidden>
+          <b>체험 중입니다 · 심폐·근지구력 서킷</b>
+          셔틀런 20m×4 → 버피 5 → 셔틀런 20m×4 순서로 도는 가상 학생 3명이 자동으로 기록됩니다. 버피를 하는 동안에는 스캔이 멈추므로 목표보다 뒤처졌다가 따라잡는 모습이 보입니다. QR 카드 탭의 시연용 카드를 비추면 직접 기록해 볼 수도 있습니다.
+        </div>
         <div class="panel" id="boardPanel" hidden>
           <h2>달리는 중 <span id="runnerCount" class="num"></span></h2>
           <div class="board" id="board"></div>
@@ -640,8 +653,56 @@
     renderBoard();
   }
 
+  // ------------------------------------------------------------
+  // 체험 모드: 가상의 학생 3명이 자동으로 기록
+  // ------------------------------------------------------------
+  let demoTimers = [];
+  let demoOn = false;
+
+  function stopDemo() {
+    demoTimers.forEach(t => clearTimeout(t));
+    demoTimers = [];
+    demoOn = false;
+    $('demoBanner').hidden = true;
+  }
+
+  function startDemo() {
+    if (session) { toast('측정 중에는 체험을 시작할 수 없습니다'); return; }
+    // 체험용 설정: 심폐·근지구력 서킷의 셔틀런 부분 (20m×4 + 20m×4 = 8회)를 40초 안에
+    document.querySelector('input[name="mode"][value="target"]').checked = true;
+    $('target').value = 8;
+    $('goalMin').value = 0;
+    $('goalS').value = 40;
+    $('legM').value = 20;
+    $('perScan').value = '2';
+    $('gapSec').value = 3;
+    $('label').value = '체험 측정 (심폐·근지구력 서킷)';
+    syncModeFields();
+    startSession();
+    demoOn = true;
+    $('demoBanner').hidden = false;
+    toast('체험 시작! 셔틀런 20m×4 → 버피 5 → 셔틀런 20m×4');
+
+    // [이름, 왕복 한 번에 걸리는 시간(초), 버피 5개에 걸리는 시간(초), 출발 지연(초)]
+    [['DEMO-1', 7, 14, 4], ['DEMO-2', 8.5, 18, 5], ['DEMO-3', 10, 22, 6]].forEach(([id, pace, burpee, start]) => {
+      // 셔틀런 20m×4 = 왕복 2번 → 버피 5 → 셔틀런 20m×4 = 왕복 2번
+      const gaps = [start, pace, burpee, pace];
+      let t = 0;
+      gaps.forEach(g => {
+        t += g;
+        demoTimers.push(setTimeout(() => {
+          if (demoOn && session) recordLap(id, 'demo');
+        }, t * 1000));
+      });
+    });
+    // 모두 끝나면 자동으로 측정 종료 (마지막 학생이 싯업까지 마칠 즈음)
+    demoTimers.push(setTimeout(() => { if (demoOn && session) endSession(false); }, 58000));
+  }
+  $('demoBtn').addEventListener('click', startDemo);
+
   function endSession(auto) {
     if (!session) return;
+    stopDemo();
     const cap = capMs();
     session.endAt = cap && auto ? cap : elapsed();
     history.unshift(session);
@@ -828,7 +889,8 @@
     if (s.mode === 'target') {
       if (u.finish == null) return { text: '미완주', cls: '', raw: '미완주' };
       const d = Math.round((g.t - u.finish) / 1000);
-      return d >= 0 ? { text: `${d}초 빠름`, cls: 'up', raw: `+${d}초` } : { text: `${-d}초 느림`, cls: 'down', raw: `${d}초` };
+      if (d === 0) return { text: '목표와 같음', cls: 'up', raw: '0초' };
+      return d > 0 ? { text: `${d}초 빠름`, cls: 'up', raw: `+${d}초` } : { text: `${-d}초 느림`, cls: 'down', raw: `${d}초` };
     }
     const d = u.count - g.n;
     return d >= 0 ? { text: d ? `달성 (+${d}회)` : '달성', cls: 'up', raw: `+${d}회` } : { text: `${-d}회 부족`, cls: 'down', raw: `${d}회` };
