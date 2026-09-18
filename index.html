@@ -321,12 +321,12 @@
           <div class="row" style="margin-top:12px">
             <button class="btn-lane" id="demoBtn">QR 카드 없이 체험하기</button>
           </div>
-          <p class="note">심폐·근지구력 서킷(셔틀런 20m×4 → 버피 5 → 셔틀런 20m×4 → 싯업 10)을 도는 가상 학생 3명이 자동으로 기록됩니다. 카메라와 QR 카드 없이 화면과 기록을 그대로 볼 수 있습니다.</p>
+          <p class="note">심폐·근지구력 서킷(셔틀런 20m×4 → 버피 5 → 셔틀런 20m×4 → 싯업 10)을 도는 가상 학생 1명이 자동으로 기록됩니다. 카메라와 QR 카드 없이 화면과 기록을 그대로 볼 수 있습니다.</p>
         </div>
 
         <div class="panel demo-banner" id="demoBanner" hidden>
           <b>체험 중입니다 · 심폐·근지구력 서킷</b>
-          셔틀런 20m×4 → 버피 5 → 셔틀런 20m×4 순서로 도는 가상 학생 3명이 자동으로 기록됩니다. 버피를 하는 동안에는 스캔이 멈추므로 목표보다 뒤처졌다가 따라잡는 모습이 보입니다. QR 카드 탭의 시연용 카드를 비추면 직접 기록해 볼 수도 있습니다.
+셔틀런 20m×4 → 버피 5 → 셔틀런 20m×4 순서로 도는 가상 학생 1명이 자동으로 기록됩니다. 버피를 하는 동안에는 스캔이 멈추므로 목표보다 뒤처졌다가 따라잡는 모습이 보입니다. QR 카드 탭의 시연용 카드를 비추면 직접 기록해 볼 수도 있습니다.
         </div>
         <div class="panel" id="boardPanel" hidden>
           <h2>달리는 중 <span id="runnerCount" class="num"></span></h2>
@@ -684,7 +684,8 @@
     toast('체험 시작! 셔틀런 20m×4 → 버피 5 → 셔틀런 20m×4');
 
     // [이름, 왕복 한 번에 걸리는 시간(초), 버피 5개에 걸리는 시간(초), 출발 지연(초)]
-    [['DEMO-1', 7, 14, 4], ['DEMO-2', 8.5, 18, 5], ['DEMO-3', 10, 22, 6]].forEach(([id, pace, burpee, start]) => {
+    // 여러 명이 함께 달리는 모습을 보여주려면 아래 줄에 학생을 더 적으면 됩니다.
+    [['DEMO-1', 8, 16, 5]].forEach(([id, pace, burpee, start]) => {
       // 셔틀런 20m×4 = 왕복 2번 → 버피 5 → 셔틀런 20m×4 = 왕복 2번
       const gaps = [start, pace, burpee, pace];
       let t = 0;
@@ -696,7 +697,7 @@
       });
     });
     // 모두 끝나면 자동으로 측정 종료 (마지막 학생이 싯업까지 마칠 즈음)
-    demoTimers.push(setTimeout(() => { if (demoOn && session) endSession(false); }, 58000));
+    demoTimers.push(setTimeout(() => { if (demoOn && session) endSession(false); }, 45000));
   }
   $('demoBtn').addEventListener('click', startDemo);
 
